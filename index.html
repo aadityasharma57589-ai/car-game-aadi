@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>White Car Road Game</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #222;
+    display: flex; align-items: center; justify-content: center;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+  }
+  #wrapper {
+    position: relative;
+    text-align: center;
+  }
+  canvas#game {
+    background: #555;
+    display: block;
+    border: 4px solid #111;
+    border-radius: 8px;
+    touch-action: none;
+  }
+  #hud {
+    position: absolute;
+    top: 10px; left: 10px;
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+  }
+  #gameOver {
+    position: absolute;
+    top: 40%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 28px;
+    text-align: center;
+    display: none;
+    text-shadow: 2px 2px 4px #000;
+  }
+  #instructions {
+    color: #ccc;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  button {
+    margin-top: 10px;
+    padding: 8px 16px;
+    font-size: 16px;
+    border: none;
+    border-radius: 6px;
+    background: #4CAF50;
+    color: white;
+    cursor: pointer;
+  }
+  #changeCarBtn {
+    background: #34495e;
+    font-size: 13px;
+    padding: 6px 12px;
+    margin-left: 8px;
+  }
+
+  /* ---------- Car Selection Screen ---------- */
+  #carSelectScreen {
+    width: 400px;
+    background: linear-gradient(180deg, #1b1f2a 0%, #0f1218 100%);
+    border: 4px solid #111;
+    border-radius: 8px;
+    padding: 16px 0 20px;
+    box-sizing: border-box;
+    color: #fff;
+  }
+  #carSelectScreen h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #f1c40f, #e74c3c);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  #carSelectScreen p.subtitle {
+    margin: 0 0 12px;
+    font-size: 12px;
+    color: #9aa2b1;
+  }
+  .car-select-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .nav-arrow {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    font-size: 16px;
+    cursor: pointer;
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+  }
+  .nav-arrow:active { background: rgba(255,255,255,0.25); }
+  #carList {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 10px;
+    padding: 6px 6px;
+    width: 300px;
+    scrollbar-width: thin;
+  }
+  #carList::-webkit-scrollbar { height: 6px; }
+  #carList::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+  .car-card {
+    position: relative;
+    flex: 0 0 auto;
+    width: 108px;
+    background: #20242f;
+    border: 3px solid transparent;
+    border-radius: 12px;
+    padding: 8px 6px 10px;
+    cursor: pointer;
+    scroll-snap-align: center;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+    box-sizing: border-box;
+  }
+  .car-card:hover { transform: translateY(-2px); }
+  .car-card.selected {
+    border-color: #f1c40f;
+    box-shadow: 0 0 14px 3px rgba(241, 196, 15, 0.75);
+  }
+  .car-card canvas {
+    display: block;
+    margin: 0 auto 6px;
+  }
+  .car-card .car-name {
+    font-size: 11px;
+    font-weight: bold;
+    color: #e8e8e8;
+    min-height: 26px;
+    line-height: 13px;
+  }
+  .car-card .selected-badge {
+    display: none;
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #f1c40f;
+    letter-spacing: 1px;
+  }
+  .car-card.selected .selected-badge { display: block; }
+  .car-card .lock-badge {
+    display: none;
+    margin-top: 4px;
+    font-size: 10px;
+    color: #999;
+  }
+  .car-card.locked { opacity: 0.55; }
+  .car-card.locked .lock-badge { display: block; }
+  #playBtn {
+    display: block;
+    margin: 16px auto 0;
+    padding: 12px 40px;
+    font-size: 17px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #4CAF50, #2ecc71);
+    border-radius: 30px;
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+  }
+  #playBtn:active { transform: scale(0.97); }
+</style>
+</head>
+<body>
+<div id="wrapper">
+
+  <!-- ================= CAR SELECTION SCREEN ================= -->
+  <div id="carSelectScreen">
+    <h1>🏎️ SELECT YOUR CAR</h1>
+    <p class="subtitle">Car choose karo aur PLAY GAME dabao</p>
+    <div class="car-select-wrapper">
+      <button id="navLeft" class="nav-arrow">&#10094;</button>
+      <div id="carList"></div>
+      <button id="navRight" class="nav-arrow">&#10095;</button>
+    </div>
+    <button id="playBtn">▶ PLAY GAME</button>
+  </div>
+
+  <!-- ================= GAME SCREEN ================= -->
+  <div id="gameScreen" style="display:none;">
+    <div id="hud">Score: 0 &nbsp;|&nbsp; 🪙 Coins: 0 &nbsp;|&nbsp; 🏆 Best: 0</div>
+    <canvas id="game" width="400" height="600"></canvas>
+    <div id="gameOver">
+      <div>Game Over!</div>
+      <button onclick="restartGame()">Phir Se Khelo</button>
+    </div>
+    <div id="instructions">
+      Left / Right Arrow keys se car chalao ya screen par tap-hold karo &nbsp;|&nbsp; 🔊 Sound ON hai
+      <br>
+      <button id="changeCarBtn" onclick="goToCarSelect()">🚗 Car Badlo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   CAR DESIGNS (10 unique cars)
+   ========================================================= */
+const CAR_DESIGNS = [
+  { id: 0, name: "Red Speedster",   body: "#e74c3c", window: "#1a1a1a", headlight: "#fff3b0", bumper: "#111", unlocked: true },
+  { id: 1, name: "Blue Thunder",    body: "#2472e8", window: "#0d1b2a", headlight: "#dff6ff", bumper: "#111", unlocked: true },
+  { id: 2, name: "Green Racer",     body: "#27ae60", window: "#111111", headlight: "#fff3b0", bumper: "#111", roof: "#111111", unlocked: true },
+  { id: 3, name: "Yellow Turbo",    body: "#f1c40f", window: "#222222", headlight: "#fff9c4", bumper: "#111", stripe: "#111111", unlocked: true },
+  { id: 4, name: "Black Shadow",    body: "#1c1c1c", window: "#000000", headlight: "#7fdbff", bumper: "#000", shine: "#555555", unlocked: true },
+  { id: 5, name: "White Lightning", body: "#f5f5f5", window: "#333333", headlight: "#00e5ff", bumper: "#222", stripe: "#00bcd4", unlocked: true },
+  { id: 6, name: "Orange Rocket",   body: "#e67e22", window: "#222222", headlight: "#fff3b0", bumper: "#111", stripe: "#111111", unlocked: true },
+  { id: 7, name: "Purple Beast",    body: "#8e44ad", window: "#1a1a1a", headlight: "#f3e5ff", bumper: "#111", roof: "#5e2d73", unlocked: true },
+  { id: 8, name: "Silver GT",       body: "#bdc3c7", window: "#333333", headlight: "#ffffff", bumper: "#444", shine: "#eaeaea", unlocked: true },
+  { id: 9, name: "Police Racer",    body: "#f5f5f5", window: "#1a1a1a", headlight: "#ffffff", bumper: "#111", roof: "#1e3a8a", police: true, unlocked: true },
+];
+
+const SELECTED_CAR_KEY = 'carGameSelectedCar';
+let selectedCarId = Number(localStorage.getItem(SELECTED_CAR_KEY));
+if (isNaN(selectedCarId) || !CAR_DESIGNS[selectedCarId]) selectedCarId = 0;
+let currentCarDesign = CAR_DESIGNS[selectedCarId];
+
+// ---- Day / Night cycle (declared early - drawCarDesign references nightFactor
+// as soon as the selection-screen preview cards are built below) ----
+const DAY_NIGHT_CYCLE_MS = 30000; // one full day->night->day cycle, in ms
+const dayNightStartTime = Date.now();
+let nightFactor = 0; // 0 = full day, 1 = full night, smoothly interpolated
+
+function updateDayNightCycle() {
+  const t = ((Date.now() - dayNightStartTime) % DAY_NIGHT_CYCLE_MS) / DAY_NIGHT_CYCLE_MS;
+  // smooth oscillation between 0 and 1 (no sudden jumps at the loop point)
+  nightFactor = (1 - Math.cos(2 * Math.PI * t)) / 2;
+}
+
+function lerpColor(hexA, hexB, t) {
+  const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
+  const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+  const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return `rgb(${r}, ${g}, ${bl})`;
+}
+
+/* =========================================================
+   Generic car drawing function - used for BOTH the small
+   preview cards on the selection screen AND the real
+   in-game player car (same design object => same look).
+   ========================================================= */
+function drawCarDesign(context, x, y, w, h, design, isPlayer) {
+  context.save();
+  context.translate(x, y);
+
+  // body
+  context.fillStyle = design.body;
+  roundRectOn(context, 0, 0, w, h, w * 0.2);
+  context.fill();
+
+  // roof / hood accent block (Green Racer roof, Purple Beast roof, Police roof)
+  if (design.roof) {
+    context.fillStyle = design.roof;
+    roundRectOn(context, w * 0.14, h * 0.06, w * 0.72, h * 0.34, w * 0.12);
+    context.fill();
+  }
+
+  // racing stripe (Yellow Turbo, White Lightning, Orange Rocket)
+  if (design.stripe) {
+    context.fillStyle = design.stripe;
+    context.fillRect(w * 0.42, 0, w * 0.16, h);
+  }
+
+  // metallic shine strip (Black Shadow, Silver GT)
+  if (design.shine) {
+    context.fillStyle = design.shine;
+    context.globalAlpha = 0.55;
+    context.fillRect(w * 0.1, h * 0.02, w * 0.08, h * 0.5);
+    context.globalAlpha = 1;
+  }
+
+  // windows
+  context.fillStyle = design.window || '#222';
+  roundRectOn(context, w * 0.15, h * 0.12, w * 0.7, h * 0.22, w * 0.08);
+  context.fill();
+  roundRectOn(context, w * 0.15, h * 0.55, w * 0.7, h * 0.18, w * 0.08);
+  context.fill();
+
+  // headlights - automatically glow on at night
+  context.save();
+  context.fillStyle = design.headlight || '#ffe066';
+  if (nightFactor > 0.15) {
+    context.shadowColor = design.headlight || '#ffe680';
+    context.shadowBlur = 8 * nightFactor;
+  }
+  context.globalAlpha = 0.55 + nightFactor * 0.45;
+  context.beginPath();
+  context.arc(w * 0.22, h * 0.045, w * 0.08, 0, Math.PI * 2);
+  context.fill();
+  context.beginPath();
+  context.arc(w * 0.78, h * 0.045, w * 0.08, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+
+  // subtle forward light beam on the road ahead, only visible at night
+  if (isPlayer && nightFactor > 0.1) {
+    context.save();
+    context.globalCompositeOperation = 'lighter';
+    const beamAlpha = nightFactor * 0.22;
+    const beamL = context.createRadialGradient(w * 0.22, -h * 0.1, 1, w * 0.22, -h * 0.1, h * 0.9);
+    beamL.addColorStop(0, `rgba(255, 240, 180, ${beamAlpha})`);
+    beamL.addColorStop(1, 'rgba(255, 240, 180, 0)');
+    context.fillStyle = beamL;
+    context.beginPath();
+    context.moveTo(w * 0.22, h * 0.045);
+    context.lineTo(w * -0.35, -h * 0.9);
+    context.lineTo(w * 0.65, -h * 0.9);
+    context.closePath();
+    context.fill();
+
+    const beamR = context.createRadialGradient(w * 0.78, -h * 0.1, 1, w * 0.78, -h * 0.1, h * 0.9);
+    beamR.addColorStop(0, `rgba(255, 240, 180, ${beamAlpha})`);
+    beamR.addColorStop(1, 'rgba(255, 240, 180, 0)');
+    context.fillStyle = beamR;
+    context.beginPath();
+    context.moveTo(w * 0.78, h * 0.045);
+    context.lineTo(w * 0.35, -h * 0.9);
+    context.lineTo(w * 1.35, -h * 0.9);
+    context.closePath();
+    context.fill();
+    context.restore();
+  }
+
+  // police roof light bar (small, flashing red/blue)
+  if (design.police) {
+    const flashOn = Math.floor(Date.now() / 250) % 2 === 0;
+    const barY = -h * 0.075;
+    const barH = h * 0.06;
+
+    // light bar housing (small black base so it reads as one unit)
+    context.fillStyle = '#111';
+    roundRectOn(context, w * 0.22, barY - h * 0.01, w * 0.56, barH + h * 0.02, 2);
+    context.fill();
+
+    // red half
+    context.save();
+    context.fillStyle = flashOn ? '#ff2b2b' : '#7a1010';
+    context.shadowColor = '#ff2b2b';
+    context.shadowBlur = flashOn ? 7 : 0;
+    roundRectOn(context, w * 0.24, barY, w * 0.24, barH, 2);
+    context.fill();
+    context.restore();
+
+    // blue half
+    context.save();
+    context.fillStyle = !flashOn ? '#2b7dff' : '#123a7a';
+    context.shadowColor = '#2b7dff';
+    context.shadowBlur = !flashOn ? 7 : 0;
+    roundRectOn(context, w * 0.52, barY, w * 0.24, barH, 2);
+    context.fill();
+    context.restore();
+  }
+
+  // front bumper
+  context.fillStyle = design.bumper || '#111';
+  context.fillRect(w * 0.08, h * 0.94, w * 0.84, h * 0.055);
+
+  // wheels
+  context.fillStyle = '#111';
+  context.fillRect(-w * 0.1, h * 0.13, w * 0.15, h * 0.2);
+  context.fillRect(w * 0.95, h * 0.13, w * 0.15, h * 0.2);
+  context.fillRect(-w * 0.1, h * 0.65, w * 0.15, h * 0.2);
+  context.fillRect(w * 0.95, h * 0.65, w * 0.15, h * 0.2);
+
+  context.restore();
+}
+
+function roundRectOn(context, x, y, w, h, r) {
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.arcTo(x + w, y, x + w, y + h, r);
+  context.arcTo(x + w, y + h, x, y + h, r);
+  context.arcTo(x, y + h, x, y, r);
+  context.arcTo(x, y, x + w, y, r);
+  context.closePath();
+}
+
+/* =========================================================
+   Build the car selection screen UI
+   ========================================================= */
+const carListEl = document.getElementById('carList');
+const cardW = 76, cardH = 128;
+
+CAR_DESIGNS.forEach(design => {
+  const card = document.createElement('div');
+  card.className = 'car-card' + (design.id === selectedCarId ? ' selected' : '') + (!design.unlocked ? ' locked' : '');
+  card.dataset.id = design.id;
+
+  const cv = document.createElement('canvas');
+  cv.width = cardW;
+  cv.height = cardH;
+  const cvCtx = cv.getContext('2d');
+  drawCarDesign(cvCtx, cardW * 0.15, cardH * 0.05, cardW * 0.7, cardH * 0.75, design);
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'car-name';
+  nameEl.textContent = design.name;
+
+  const selBadge = document.createElement('div');
+  selBadge.className = 'selected-badge';
+  selBadge.textContent = '✓ SELECTED';
+
+  const lockBadge = document.createElement('div');
+  lockBadge.className = 'lock-badge';
+  lockBadge.textContent = '🔒 Locked';
+
+  card.appendChild(cv);
+  card.appendChild(nameEl);
+  card.appendChild(selBadge);
+  card.appendChild(lockBadge);
+
+  card.addEventListener('click', () => selectCar(design.id));
+
+  carListEl.appendChild(card);
+});
+
+function selectCar(id) {
+  const design = CAR_DESIGNS[id];
+  if (!design || !design.unlocked) return;
+  selectedCarId = id;
+  currentCarDesign = design;
+  localStorage.setItem(SELECTED_CAR_KEY, String(id));
+  document.querySelectorAll('.car-card').forEach(c => {
+    c.classList.toggle('selected', Number(c.dataset.id) === id);
+  });
+}
+
+// scroll selected card into view on load
+(function scrollToSelected() {
+  const el = carListEl.querySelector('.car-card.selected');
+  if (el) el.scrollIntoView({ inline: 'center', block: 'nearest' });
+})();
+
+// left / right navigation arrows
+document.getElementById('navLeft').addEventListener('click', () => {
+  carListEl.scrollBy({ left: -cardW - 20, behavior: 'smooth' });
+});
+document.getElementById('navRight').addEventListener('click', () => {
+  carListEl.scrollBy({ left: cardW + 20, behavior: 'smooth' });
+});
+
+/* =========================================================
+   Screen switching
+   ========================================================= */
+const carSelectScreen = document.getElementById('carSelectScreen');
+const gameScreen = document.getElementById('gameScreen');
+
+document.getElementById('playBtn').addEventListener('click', () => {
+  carSelectScreen.style.display = 'none';
+  gameScreen.style.display = 'block';
+  startGame();
+});
+
+function goToCarSelect() {
+  running = false;
+  stopSiren();
+  gameScreen.style.display = 'none';
+  carSelectScreen.style.display = 'block';
+  gameOverEl.style.display = 'none';
+}
+
+/* =========================================================
+   EXISTING GAMEPLAY (unchanged logic, only player car
+   drawing now uses currentCarDesign instead of plain white)
+   ========================================================= */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const hud = document.getElementById('hud');
+const gameOverEl = document.getElementById('gameOver');
+
+// ---- Sound Effects (Web Audio API, no external files needed) ----
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx;
+}
+
+function playTone(freq, duration, type = 'sine', volume = 0.2, startDelay = 0) {
+  try {
+    const ctxA = getAudioCtx();
+    const osc = ctxA.createOscillator();
+    const gain = ctxA.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = volume;
+    osc.connect(gain);
+    gain.connect(ctxA.destination);
+    const startTime = ctxA.currentTime + startDelay;
+    gain.gain.setValueAtTime(volume, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    osc.start(startTime);
+    osc.stop(startTime + duration);
+  } catch (e) { /* audio not available */ }
+}
+
+function playCoinSound() {
+  playTone(880, 0.1, 'sine', 0.15);
+  playTone(1320, 0.12, 'sine', 0.12, 0.05);
+}
+
+function playCrashSound() {
+  playTone(120, 0.35, 'sawtooth', 0.25);
+  playTone(80, 0.4, 'square', 0.2, 0.05);
+}
+
+function playHighScoreSound() {
+  playTone(660, 0.12, 'sine', 0.15, 0);
+  playTone(880, 0.12, 'sine', 0.15, 0.12);
+  playTone(1100, 0.2, 'sine', 0.15, 0.24);
+}
+
+// ---- Police siren loop (subtle, plays only while Police Racer is in use) ----
+let sirenOsc = null;
+let sirenGain = null;
+let sirenInterval = null;
+
+function startSiren() {
+  if (sirenOsc) return; // already running
+  try {
+    const ctxA = getAudioCtx();
+    sirenOsc = ctxA.createOscillator();
+    sirenGain = ctxA.createGain();
+    sirenOsc.type = 'sine';
+    sirenGain.gain.value = 0.045; // subtle volume so it doesn't overpower other sounds
+    sirenOsc.connect(sirenGain);
+    sirenGain.connect(ctxA.destination);
+    sirenOsc.frequency.setValueAtTime(650, ctxA.currentTime);
+    sirenOsc.start();
+
+    let wailUp = true;
+    sirenInterval = setInterval(() => {
+      if (!sirenOsc) return;
+      const target = wailUp ? 950 : 650;
+      sirenOsc.frequency.linearRampToValueAtTime(target, getAudioCtx().currentTime + 0.5);
+      wailUp = !wailUp;
+    }, 500);
+  } catch (e) { /* audio not available */ }
+}
+
+function stopSiren() {
+  if (sirenInterval) {
+    clearInterval(sirenInterval);
+    sirenInterval = null;
+  }
+  if (sirenOsc) {
+    try { sirenOsc.stop(); } catch (e) {}
+    sirenOsc.disconnect();
+    sirenOsc = null;
+  }
+  if (sirenGain) {
+    sirenGain.disconnect();
+    sirenGain = null;
+  }
+}
+
+// unlock audio on first user interaction (needed on mobile/Chrome autoplay policy)
+function unlockAudio() {
+  getAudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  document.removeEventListener('touchstart', unlockAudio);
+  document.removeEventListener('mousedown', unlockAudio);
+  document.removeEventListener('keydown', unlockAudio);
+}
+document.addEventListener('touchstart', unlockAudio);
+document.addEventListener('mousedown', unlockAudio);
+document.addEventListener('keydown', unlockAudio);
+
+const roadWidth = 300;
+const roadLeft = (canvas.width - roadWidth) / 2;
+const roadRight = roadLeft + roadWidth;
+
+let carWidth = 40, carHeight = 70;
+let car = { x: canvas.width/2 - carWidth/2, y: canvas.height - carHeight - 20, speed: 6 };
+
+let keys = {};
+let obstacles = [];
+let coinsList = [];
+let score = 0;
+let coins = 0;
+let bestScore = Number(localStorage.getItem('carGameBestScore')) || 0;
+let speed = 4;
+let running = false;
+let dashOffset = 0;
+let newHighScore = false;
+
+// ---- Progressive difficulty: speed gradually increases the longer you survive ----
+const BASE_SPEED = 4;
+const MAX_SPEED = 11;                 // cap so it never becomes unfairly fast
+const SPEED_INCREASE_INTERVAL_MS = 4000; // increase every 4 seconds
+const SPEED_INCREASE_AMOUNT = 0.35;      // small, smooth step each time
+let lastSpeedIncreaseTime = 0;
+
+document.addEventListener('keydown', e => { keys[e.key] = true; });
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// touch controls - press and hold left/right half of screen to move continuously
+let touchActive = false;
+
+function setDirectionFromX(x) {
+  const rect = canvas.getBoundingClientRect();
+  const relX = x - rect.left;
+  if (relX < rect.width / 2) {
+    keys['ArrowLeft'] = true;
+    keys['ArrowRight'] = false;
+  } else {
+    keys['ArrowRight'] = true;
+    keys['ArrowLeft'] = false;
+  }
+}
+
+function clearDirection() {
+  keys['ArrowLeft'] = false;
+  keys['ArrowRight'] = false;
+  touchActive = false;
+}
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  touchActive = true;
+  setDirectionFromX(e.touches[0].clientX);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (touchActive) setDirectionFromX(e.touches[0].clientX);
+}, { passive: false });
+
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  clearDirection();
+}, { passive: false });
+
+canvas.addEventListener('touchcancel', clearDirection);
+
+canvas.addEventListener('mousedown', e => {
+  touchActive = true;
+  setDirectionFromX(e.clientX);
+});
+canvas.addEventListener('mousemove', e => {
+  if (touchActive) setDirectionFromX(e.clientX);
+});
+canvas.addEventListener('mouseup', clearDirection);
+canvas.addEventListener('mouseleave', clearDirection);
+
+function spawnObstacle() {
+  const w = 40, h = 70;
+  const x = roadLeft + Math.random() * (roadWidth - w);
+  obstacles.push({ x, y: -h, w, h, color: randomColor() });
+}
+
+function spawnCoin() {
+  const size = 24;
+  const x = roadLeft + Math.random() * (roadWidth - size);
+  coinsList.push({ x, y: -size, size });
+}
+
+function randomColor() {
+  const colors = ['#e74c3c', '#f1c40f', '#3498db', '#9b59b6', '#e67e22'];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
+const STARS = Array.from({ length: 18 }, () => ({
+  x: Math.random() * 400,
+  y: Math.random() * 200,
+  r: Math.random() * 1.3 + 0.4,
+  twinkle: Math.random() * Math.PI * 2
+}));
+
+function drawRoad() {
+  // background: sky-blue-grey by day, deep navy by night
+  ctx.fillStyle = lerpColor('#555555', '#161a26', nightFactor);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // subtle stars, only visible as night approaches
+  if (nightFactor > 0.05) {
+    ctx.save();
+    ctx.globalAlpha = nightFactor * 0.8;
+    ctx.fillStyle = '#ffffff';
+    for (const s of STARS) {
+      const tw = 0.6 + 0.4 * Math.sin(Date.now() / 500 + s.twinkle);
+      ctx.globalAlpha = nightFactor * 0.8 * tw;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  ctx.fillStyle = lerpColor('#3a3a3a', '#14161d', nightFactor);
+  ctx.fillRect(roadLeft, 0, roadWidth, canvas.height);
+
+  // road edges
+  ctx.fillStyle = lerpColor('#ffffff', '#8f97ab', nightFactor);
+  ctx.fillRect(roadLeft - 4, 0, 4, canvas.height);
+  ctx.fillRect(roadRight, 0, 4, canvas.height);
+
+  // dashed center-ish lines (two lanes)
+  ctx.strokeStyle = lerpColor('#ffffff', '#7a8296', nightFactor);
+  ctx.lineWidth = 4;
+  ctx.setLineDash([20, 20]);
+  ctx.lineDashOffset = -dashOffset;
+  ctx.beginPath();
+  ctx.moveTo(canvas.width/2, 0);
+  ctx.lineTo(canvas.width/2, canvas.height);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // subtle overall night tint for atmosphere (kept light so gameplay stays clear)
+  if (nightFactor > 0.02) {
+    ctx.fillStyle = `rgba(10, 15, 35, ${nightFactor * 0.18})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function drawCar(x, y, w, h, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  // body
+  ctx.fillStyle = color;
+  roundRect(ctx, 0, 0, w, h, 8);
+  ctx.fill();
+  // windows
+  ctx.fillStyle = '#222';
+  roundRect(ctx, w*0.15, h*0.12, w*0.7, h*0.25, 4);
+  ctx.fill();
+  roundRect(ctx, w*0.15, h*0.55, w*0.7, h*0.2, 4);
+  ctx.fill();
+  // headlights - glow on automatically at night
+  ctx.save();
+  ctx.fillStyle = nightFactor > 0.15 ? '#fff3b0' : '#e0e0a0';
+  if (nightFactor > 0.15) {
+    ctx.shadowColor = '#ffe680';
+    ctx.shadowBlur = 6 * nightFactor;
+  }
+  ctx.globalAlpha = 0.5 + nightFactor * 0.5;
+  ctx.beginPath();
+  ctx.arc(w * 0.18, h * 0.04, w * 0.07, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(w * 0.82, h * 0.04, w * 0.07, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // wheels
+  ctx.fillStyle = '#111';
+  ctx.fillRect(-4, h*0.12, 6, h*0.2);
+  ctx.fillRect(w-2, h*0.12, 6, h*0.2);
+  ctx.fillRect(-4, h*0.65, 6, h*0.2);
+  ctx.fillRect(w-2, h*0.65, 6, h*0.2);
+  ctx.restore();
+}
+
+function drawCoin(x, y, size) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#f1c40f';
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#b8860b';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#b8860b';
+  ctx.font = `bold ${size*0.55}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('₹', size/2, size/2 + 1);
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function update() {
+  if (!running) return;
+
+  if ((keys['ArrowLeft'] || keys['a']) && car.x > roadLeft + 2) car.x -= car.speed;
+  if ((keys['ArrowRight'] || keys['d']) && car.x < roadRight - carWidth - 2) car.x += car.speed;
+
+  dashOffset = (dashOffset + speed) % 40;
+
+  // gradually increase speed every few seconds, smooth and capped for fairness
+  const now = Date.now();
+  if (now - lastSpeedIncreaseTime >= SPEED_INCREASE_INTERVAL_MS && speed < MAX_SPEED) {
+    speed = Math.min(speed + SPEED_INCREASE_AMOUNT, MAX_SPEED);
+    // slightly boost steering speed too, so dodging stays fair as things speed up
+    car.speed = 6 + (speed - BASE_SPEED) * 0.35;
+    lastSpeedIncreaseTime = now;
+  }
+
+  if (Math.random() < 0.015) spawnObstacle();
+  if (Math.random() < 0.012) spawnCoin();
+
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    obstacles[i].y += speed;
+    if (obstacles[i].y > canvas.height) {
+      obstacles.splice(i, 1);
+      score++;
+    }
+  }
+
+  for (let i = coinsList.length - 1; i >= 0; i--) {
+    coinsList[i].y += speed;
+    if (coinsList[i].y > canvas.height) {
+      coinsList.splice(i, 1);
+      continue;
+    }
+    // coin collection check
+    const c = coinsList[i];
+    if (
+      car.x < c.x + c.size &&
+      car.x + carWidth > c.x &&
+      car.y < c.y + c.size &&
+      car.y + carHeight > c.y
+    ) {
+      coinsList.splice(i, 1);
+      coins++;
+      playCoinSound();
+    }
+  }
+
+  // collision check
+  for (const ob of obstacles) {
+    if (
+      car.x < ob.x + ob.w &&
+      car.x + carWidth > ob.x &&
+      car.y < ob.y + ob.h &&
+      car.y + carHeight > ob.y
+    ) {
+      running = false;
+      stopSiren();
+      newHighScore = score > bestScore;
+      playCrashSound();
+      if (newHighScore) {
+        bestScore = score;
+        localStorage.setItem('carGameBestScore', bestScore);
+        setTimeout(playHighScoreSound, 300);
+      }
+      gameOverEl.innerHTML = '<div>Game Over!</div>' +
+        '<div style="font-size:18px;margin-top:8px;">Score: ' + score + ' | Coins: ' + coins + '</div>' +
+        (newHighScore ? '<div style="font-size:16px;color:#f1c40f;margin-top:6px;">🏆 Naya High Score!</div>' : '<div style="font-size:16px;color:#ccc;margin-top:6px;">Best: ' + bestScore + '</div>') +
+        '<button onclick="restartGame()">Phir Se Khelo</button>';
+      gameOverEl.style.display = 'block';
+    }
+  }
+
+  hud.textContent = 'Score: ' + score + ' | 🪙 Coins: ' + coins + ' | 🏆 Best: ' + bestScore;
+}
+
+function draw() {
+  updateDayNightCycle();
+  drawRoad();
+  for (const c of coinsList) drawCoin(c.x, c.y, c.size);
+  for (const ob of obstacles) drawCar(ob.x, ob.y, ob.w, ob.h, ob.color);
+  drawCarDesign(ctx, car.x, car.y, carWidth, carHeight, currentCarDesign, true);
+}
+
+function loop() {
+  update();
+  draw();
+  if (running) requestAnimationFrame(loop);
+}
+
+function startGame() {
+  obstacles = [];
+  coinsList = [];
+  score = 0;
+  coins = 0;
+  speed = BASE_SPEED;
+  car.speed = 6;
+  lastSpeedIncreaseTime = Date.now();
+  newHighScore = false;
+  car.x = canvas.width/2 - carWidth/2;
+  running = true;
+  gameOverEl.style.display = 'none';
+  if (currentCarDesign.police) {
+    startSiren();
+  } else {
+    stopSiren();
+  }
+  loop();
+}
+
+function restartGame() {
+  startGame();
+}
+</script>
+</body>
+</html>
