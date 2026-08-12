@@ -1,0 +1,16 @@
+{
+  "name": "Aadi 2D Car Game",
+  "short_name": "CarGame",
+  "description": "2D Speed Car Racing Game",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#222222",
+  "theme_color": "#222222",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/512.png?text=Car+Game",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
